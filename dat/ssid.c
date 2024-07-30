@@ -221,6 +221,26 @@ static void wifid_write_ssid_dns_intercept_config(struct wifi_settings *parsed_s
 	}
 }
 
+static void wifi_write_usteer_per_ssid_config(struct wifi_settings *parsed_settings, int ssid_idx, int radio_idx)
+{
+    NULL_ASSERT(VOID_RETURN_VALUE, parsed_settings);
+
+    if (!IS_VALID_ARRAY_INDEX(ssid_idx, SSID_MAX)) {
+        debug_msg_err("Passed SSID index is out of range, passed %d vs max %d", ssid_idx, SSID_MAX);
+        return;
+    }
+
+    int band = wifid_find_band(radio_idx);
+
+    if (parsed_settings->ssid[ssid_idx].band[band].ssid[0] == '\0') {
+        return;
+    }
+    if (parsed_settings->ssid[ssid_idx].band_steering) {
+        ng_uci_add_list(gDatto_net_state.uci_ctx, "usteer.@usteer[0].bandsteering_enabled_list", parsed_settings->ssid[ssid_idx].band[band].ssid);	
+    } else {
+        ng_uci_del_list(gDatto_net_state.uci_ctx, "usteer.@usteer[0].bandsteering_enabled_list", parsed_settings->ssid[ssid_idx].band[band].ssid);
+    }
+}
 // TODO: remove ap_mgr section after switch to usteerd.
 static void wifi_write_ap_mgr_per_ssid_config(struct wifi_settings *parsed_settings, int ssid_idx)
 {
@@ -674,12 +694,12 @@ int wifid_write_ap_iface_config(struct wifi_settings *parsed_settings, int ssid_
 	 * be deauthed
 	 */
 	ng_uci_set_int(gDatto_net_state.uci_ctx, parsed_settings->ssid[ssid_idx].dynamic_vlan ? 2 : 0, uci_addr_ap_dynamic_vlan, radio_idx, ssid_idx + 1);
-
+	ng_uci_set_int(gDatto_net_state.uci_ctx, parsed_settings->ssid[ssid_idx].band_steering, uci_addr_ap_band_steering_enabled, ssid_idx + 1);
 	ng_uci_set_int(gDatto_net_state.uci_ctx, parsed_settings->ssid[ssid_idx].dtim_interval, uci_addr_ap_dtim_interval, radio_idx, ssid_idx + 1);
 
 	if (parsed_settings->ssid[ssid_idx].dynamic_vlan) {
 		ng_uci_set_string(gDatto_net_state.uci_ctx, "br-vlan", uci_addr_ap_vlan_bridge, radio_idx, ssid_idx + 1);
-		if (gDatto_net_state.current_wired_uplink[0]) {
+		if (gDatto_net_state.current_wired_uplink[0]) {	
 			int iface_num = -1;
 
 			if (sscanf(gDatto_net_state.current_wired_uplink, "br-wired%i", &iface_num) == EOF) {
@@ -694,7 +714,7 @@ int wifid_write_ap_iface_config(struct wifi_settings *parsed_settings, int ssid_
 	} else {
 		ng_uci_delete(gDatto_net_state.uci_ctx, uci_addr_ap_vlan_bridge, radio_idx, ssid_idx + 1);
 	}
-
+	wifi_write_usteer_per_ssid_config(parsed_settings, ssid_idx, radio_idx);
 	return 1;
 }
 

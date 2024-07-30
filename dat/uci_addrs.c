@@ -44,6 +44,7 @@ const char uci_addr_ap_auth_server[] =					DATTO_NET_UCI_WIRELESS_AP ".auth_serv
 const char uci_addr_ap_config_enable[] =				DATTO_NET_UCI_WIRELESS_AP ".config_enable";
 const char uci_addr_ap_dtim_interval[] =				DATTO_NET_UCI_WIRELESS_AP ".dtim_interval";
 const char uci_addr_ap_dynamic_vlan[] =					DATTO_NET_UCI_WIRELESS_AP ".dynamic_vlan";
+const char uci_addr_ap_band_steering_enabled[] =	DATTO_NET_UCI_WIRELESS_AP ".band_steering_enabled";
 const char uci_addr_ap_enable[] =						DATTO_NET_UCI_WIRELESS_AP ".enable";
 const char uci_addr_ap_encryption[] =					DATTO_NET_UCI_WIRELESS_AP ".encryption";
 

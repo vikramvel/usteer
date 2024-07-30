@@ -31,9 +31,6 @@
 
 #include <libfwcore/platform/wireless.h>
 
-/* Maximum size of the ESSID */
-#define ESSID_MAX_SIZE	32
-
 /* This is a list of the valid minimum basic and supported data rates we can set into the radio.
  * Each number is in Kbps.
  */
@@ -290,135 +287,6 @@ static int wifid_write_radio_config(struct wifi_settings *parsed_settings, int r
 	return 1;
 }
 
-#ifdef OM_USTEER_ROAM
-/* Function: check_ssid_value()
- * Compare UCI list option values against specified ssid name.
- * Outputs:  0 - match, otherwise -1.
- */
-static int check_ssid_value(char *option_name, void *ssid_name_array)
-{
-	/* If the pointers are null, return no match */
-	NULL_ASSERT2(-1, option_name, ssid_name_array);
-	char *ssid_name = ssid_name_array;
-
-	return (strncmp(option_name, ssid_name, ESSID_MAX_SIZE) == 0) ? 0 : -1;
-}
-
-struct ssid_mapping {
-	int count;
-	char *ssid_map[SSID_MAX];
-};
-
-/* Function: remove_ssid_name_from_array()
- * Compare UCI list option values against values from SSID setting array.
- * Outputs:  0 - removed option, -1 couldn't find option.
- */
-static int remove_ssid_name_from_array(char *option_name, void *ssid_map_param)
-{
-	/* If the pointers are null, return no match */
-	NULL_ASSERT2(-1, option_name, ssid_map_param);
-	struct ssid_mapping *ssid_map = ssid_map_param;
-	char **maps_ssid_name = ssid_map->ssid_map;
-
-	if (ssid_map->count <= 0) // nothing to remove. array mismatch
-		return -1;
-
-	for (int ssid_idx = 0; ssid_idx < SSID_MAX; ++ssid_idx) {
-		if (!maps_ssid_name[ssid_idx])
-			continue;
-
-		if (strncmp(option_name, maps_ssid_name[ssid_idx], ESSID_MAX_SIZE) == 0) {
-			// remove from ssid array and return match value
-			maps_ssid_name[ssid_idx] = NULL;
-			ssid_map->count--;
-			return 0;
-		}
-		// there is mismatch for first element
-		return -1;
-	}
-	// mismatch - couldn't find
-	return -1;
-}
-
-static void wifi_write_roam_params(struct wifi_settings *parsed_settings)
-{
-	NULL_ASSERT(VOID_RETURN_VALUE, parsed_settings);
-
-	// get settings of ssid array name from wifi_settings.
-	// Create temporary arrays to check settings.
-	struct ssid_mapping roam_map = { 0 };
-	struct ssid_mapping band_steer_map = { 0 };
-
-	for (int ssid_idx = 0; ssid_idx < SSID_MAX; ++ssid_idx) {
-		if (parsed_settings->ssid[ssid_idx].roaming_80211v &&
-				parsed_settings->ssid[ssid_idx].ssid[0]) {
-			roam_map.ssid_map[ssid_idx] = parsed_settings->ssid[ssid_idx].ssid;
-			roam_map.count++;
-		}
-		if (parsed_settings->ssid[ssid_idx].band_steering &&
-				parsed_settings->ssid[ssid_idx].ssid[0]) {
-			band_steer_map.ssid_map[ssid_idx] = parsed_settings->ssid[ssid_idx].ssid;
-			band_steer_map.count++;
-		}
-	}
-
-	struct uci_list *tmp_list = NULL;
-	// we should have list entry in UCI
-	bool no_uci_ssid_list = (ng_uci_get_list(&tmp_list, USTEER_UCI_SSID_LIST) <= 0);
-
-	if (roam_map.count > 0) {
-		// remove from mapping items from uci list
-		if (no_uci_ssid_list ||
-				ng_uci_list_foreach(USTEER_UCI_SSID_LIST, remove_ssid_name_from_array, &roam_map) < 0 ||
-				roam_map.count > 0) { // check if remain extra to add
-			debug_msg_debug("roaming_80211v mismatch detected - rewrite config");
-			ng_uci_delete(gDatto_net_state.uci_ctx, USTEER_UCI_SSID_LIST);
-			for (int ssid_idx = 0; ssid_idx < SSID_MAX; ++ssid_idx) {
-				if (parsed_settings->ssid[ssid_idx].roaming_80211v &&
-						parsed_settings->ssid[ssid_idx].ssid[0]) {
-					ng_uci_add_list(gDatto_net_state.uci_ctx, parsed_settings->ssid[ssid_idx].ssid, USTEER_UCI_SSID_LIST);
-				}
-			}
-		}
-	} else {
-		if (no_uci_ssid_list || ng_uci_list_foreach(USTEER_UCI_SSID_LIST, check_ssid_value, "") < 0) {
-			debug_msg_debug("roaming_80211v mismatch detected - rewrite config, all_disabled case");
-			ng_uci_delete(gDatto_net_state.uci_ctx, USTEER_UCI_SSID_LIST);
-			// When roaming is disabled the ssid_list should be specified with empty entry.
-			// NOTE: in case of ssid_list doesn't exist - usteer allows all SSIDs.
-			ng_uci_add_list(gDatto_net_state.uci_ctx, "", USTEER_UCI_SSID_LIST);
-		}
-	}
-	// we should have list entry in UCI
-	no_uci_ssid_list = (ng_uci_get_list(&tmp_list, USTEER_UCI_BAND_STEER_SSID_LIST) <= 0);
-	if (band_steer_map.count > 0) {
-		// remove from mapping items from uci list
-		if (no_uci_ssid_list ||
-				ng_uci_list_foreach(USTEER_UCI_BAND_STEER_SSID_LIST, remove_ssid_name_from_array, &band_steer_map) < 0 ||
-				band_steer_map.count > 0) { // check if remain extra to add
-			debug_msg_debug("band_steering mismatch detected - rewrite config");
-			ng_uci_delete(gDatto_net_state.uci_ctx, USTEER_UCI_BAND_STEER_SSID_LIST);
-			for (int ssid_idx = 0; ssid_idx < SSID_MAX; ++ssid_idx) {
-				if (parsed_settings->ssid[ssid_idx].band_steering &&
-						parsed_settings->ssid[ssid_idx].ssid[0]) {
-					ng_uci_add_list(gDatto_net_state.uci_ctx, parsed_settings->ssid[ssid_idx].ssid, USTEER_UCI_BAND_STEER_SSID_LIST);
-				}
-			}
-		}
-	} else {
-		if (no_uci_ssid_list || ng_uci_list_foreach(USTEER_UCI_BAND_STEER_SSID_LIST, check_ssid_value, "") < 0) {
-			debug_msg_debug("roaming_80211v mismatch detected - rewrite config, all_disabled case");
-			ng_uci_delete(gDatto_net_state.uci_ctx, USTEER_UCI_BAND_STEER_SSID_LIST);
-			// When roaming is disabled the ssid_list should be specified with empty entry.
-			// NOTE: in case of ssid_list doesn't exist - usteer allows all SSIDs.
-			ng_uci_add_list(gDatto_net_state.uci_ctx, "", USTEER_UCI_BAND_STEER_SSID_LIST);
-		}
-	}
-}
-#else
-static void wifi_write_roam_params(struct wifi_settings OM_UNUSED(*parsed_settings)) { }
-#endif // OM_USTEER_ROAM
-
 int wifid_write_config(struct wifi_settings *parsed_settings)
 {
 	NULL_ASSERT(-1, parsed_settings);
@@ -501,8 +369,6 @@ int wifid_write_config(struct wifi_settings *parsed_settings)
 
 	for (int ssid_idx = 0; ssid_idx < SSID_MAX; ++ssid_idx)
 		wifid_write_ssid_config(parsed_settings, ssid_idx);
-
-	wifi_write_roam_params(parsed_settings);
 
 	ng_uci_set_int(gDatto_net_state.uci_ctx, !platform_wireless_get_scanning_support(), "%s", uci_addr_u80211d_ap_force);
 

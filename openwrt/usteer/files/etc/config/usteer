@@ -151,5 +151,8 @@ config usteer
 	# - signal_kick
 	#list event_log_types ''
 
+	# List of SSIDs to enable band steering on
+	list band_steer_ssid_list ''
+	
 	# List of SSIDs to enable steering on
 	#list ssid_list ''

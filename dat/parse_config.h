@@ -141,7 +141,6 @@ struct ssid {
 	struct band band[BAND_MAX];
 	struct dhcp dhcp;
 
-	/* These two settings are used to enable/disable ap_mgr(usteer) features. */
 	bool band_steering;
 	bool roaming_80211v;
 

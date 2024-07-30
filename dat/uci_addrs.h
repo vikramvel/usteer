@@ -40,11 +40,6 @@
 #define AP_MGR_UCI							"ap_mgr"
 #define AP_MGR_UCI_SSID						AP_MGR_UCI ".ssid%d"
 
-#define USTEER_UCI							"usteer"
-#define USTEER_UCI_FIRST					USTEER_UCI ".@usteer[0]"
-#define USTEER_UCI_SSID_LIST				USTEER_UCI_FIRST ".ssid_list"
-#define USTEER_UCI_BAND_STEER_SSID_LIST		USTEER_UCI_FIRST ".band_steer_ssid_list"
-
 extern const char uci_addr_antenna[];
 extern const char uci_addr_datto_net_debug_level[];
 extern const char uci_addr_delayed_wifi[];
@@ -78,6 +73,7 @@ extern const char uci_addr_ap_auth_server[];
 extern const char uci_addr_ap_config_enable[];
 extern const char uci_addr_ap_dtim_interval[];
 extern const char uci_addr_ap_dynamic_vlan[];
+extern const char uci_addr_ap_band_steering_enabled[];
 extern const char uci_addr_ap_enable[];
 extern const char uci_addr_ap_encryption[];
 extern const char uci_addr_ap_ft_auth_bridge[];

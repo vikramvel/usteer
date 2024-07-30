@@ -442,6 +442,7 @@ int wifi_reload_config(bool fresh_start)
 
 		int band = wifid_find_band(radio_idx);
 
+		debug_msg_info("*** running for radio ---  %d band [%d]", radio_idx, band);
 		if (!IS_VALID_ARRAY_INDEX(band, BAND_MAX))
 			continue;
 
@@ -533,7 +534,6 @@ int wifi_reload_config(bool fresh_start)
 
 			/* set isolate for batman and uds */
 			ng_uci_data_get_val_bool(new_settings.ssid[ssid_idx].client_isolate, uci_addr_ap_isolate, radio_idx, ssid_idx + 1);
-
 			/* RADIUS Auth */
 			ng_uci_data_get_val(new_settings.ssid[ssid_idx].radius_server, sizeof(new_settings.ssid[ssid_idx].radius_server), uci_addr_ap_auth_server, radio_idx, ssid_idx + 1);
 			ng_uci_data_get_val(new_settings.ssid[ssid_idx].radius_key, sizeof(new_settings.ssid[ssid_idx].radius_key), uci_addr_ap_auth_secret, radio_idx, ssid_idx + 1);
@@ -573,7 +573,7 @@ int wifi_reload_config(bool fresh_start)
 			ng_uci_data_get_val_bool(new_settings.ssid[ssid_idx].neigh_report, uci_addr_ap_neighbor_reports, radio_idx, ssid_idx + 1);
 
 			ng_uci_data_get_val_bool(new_settings.ssid[ssid_idx].dynamic_vlan, uci_addr_ap_dynamic_vlan, radio_idx, ssid_idx + 1);
-
+			ng_uci_data_get_val_bool(new_settings.ssid[ssid_idx].band_steering, uci_addr_ap_band_steering_enabled, radio_idx, ssid_idx + 1);
 			ng_uci_data_get_val_int(&new_settings.ssid[ssid_idx].dtim_interval, uci_addr_ap_dtim_interval, radio_idx, ssid_idx + 1);
 		}
 
