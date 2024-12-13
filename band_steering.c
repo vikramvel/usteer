@@ -15,6 +15,8 @@
  *   Copyright (C) 2022 David Bauer <mail@david-bauer.net>
  */
 
+//#include <libomcommon/common.h>
+
 #include "usteer.h"
 #include "node.h"
 
@@ -28,6 +30,11 @@ bool usteer_band_steering_is_target(struct usteer_local_node *ln, struct usteer_
 {
 	if (&ln->node == node)
 		return false;
+
+	if (ln->node.band_steer_disabled) {
+		//MSG(DEBUG_ALL, "band_steering is disabled for %s\n", NC(usteer_node_name(node)));
+		return false;
+	}
 
 	if (strcmp(ln->node.ssid, node->ssid))
 		return false;

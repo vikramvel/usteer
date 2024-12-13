@@ -83,6 +83,7 @@ struct usteer_node {
 	uint8_t bssid[6];
 
 	bool disabled;
+	bool band_steer_disabled;
 	int freq;
 	int channel;
 	int op_class;
@@ -145,6 +146,8 @@ struct usteer_node_handler {
 };
 
 struct usteer_config {
+	bool file;
+	bool is_debug_inited;
 	bool syslog;
 	uint32_t debug_level;
 
@@ -206,6 +209,7 @@ struct usteer_config {
 	uint32_t event_log_mask;
 
 	struct blob_attr *ssid_list;
+	struct blob_attr *band_steer_ssid_list;
 };
 
 struct usteer_bss_tm_query {
@@ -375,6 +379,9 @@ void config_get_node_up_script(struct blob_buf *buf);
 
 void config_set_ssid_list(struct blob_attr *data);
 void config_get_ssid_list(struct blob_buf *buf);
+
+void config_set_band_steer_ssid_list(struct blob_attr *data);
+void config_get_band_steer_ssid_list(struct blob_buf *buf);
 
 int usteer_interface_init(void);
 void usteer_interface_add(const char *name);

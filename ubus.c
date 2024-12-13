@@ -146,6 +146,7 @@ struct cfg_item {
 };
 
 #define __config_items \
+	_cfg(BOOL, file), \
 	_cfg(BOOL, syslog), \
 	_cfg(U32, debug_level), \
 	_cfg(BOOL, ipv6), \
@@ -187,7 +188,8 @@ struct cfg_item {
 	_cfg(ARRAY_CB, interfaces), \
 	_cfg(STRING_CB, node_up_script), \
 	_cfg(ARRAY_CB, event_log_types), \
-	_cfg(ARRAY_CB, ssid_list)
+	_cfg(ARRAY_CB, ssid_list), \
+	_cfg(ARRAY_CB, band_steer_ssid_list)
 
 enum cfg_items {
 #define _cfg(_type, _name) CFG_##_name
@@ -258,6 +260,8 @@ usteer_ubus_set_config(struct ubus_context *ctx, struct ubus_object *obj,
 
 	if (!strcmp(method, "set_config"))
 		usteer_init_defaults();
+
+	config.is_debug_inited = false;
 
 	blobmsg_parse(config_policy, __CFG_MAX, tb, blob_data(msg), blob_len(msg));
 	for (i = 0; i < __CFG_MAX; i++) {

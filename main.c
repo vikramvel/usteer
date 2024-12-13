@@ -27,6 +27,8 @@
 #include "event.h"
 #include "node.h"
 
+#define DEBUG_FILE_PATH				"/tmp/debug_usteer.log"
+
 struct ubus_context *ubus_ctx;
 struct usteer_config config = {};
 struct blob_attr *host_info_blob;
@@ -34,6 +36,9 @@ uint64_t current_time;
 static int dump_time;
 
 LIST_HEAD(node_handlers);
+
+static FILE *gDebug_file = NULL;
+static bool gSyslog_open = false;
 
 const char * const event_types[__EVENT_TYPE_MAX] = {
 	[EVENT_TYPE_PROBE] = "probe",
@@ -49,6 +54,59 @@ void log_msg(char *msg)
 		fprintf(stderr, "%s\n", msg);
 }
 
+
+static void debug_file_close(void)
+{
+	if (!gDebug_file)
+		return;
+
+	fclose(gDebug_file); // Explicitly set to NULL on following line
+	gDebug_file = NULL;
+}
+
+static bool debug_file_open(const char *debug_file_path)
+{
+	if (!debug_file_path) {
+		fprintf(stderr, "ERROR: debug_file_path is NULL\n");
+		return false;
+	}
+
+	if (gDebug_file) {
+		fprintf(stderr, "WARNING: '%s' is already open for writing.\n", debug_file_path);
+		return true;
+	}
+
+	gDebug_file = fopen(debug_file_path, "a");
+
+	if (!gDebug_file) {
+		fprintf(stderr, "ERROR: failed to open '%s' for writing.\n", debug_file_path);
+		return false;
+	}
+
+	return true;
+}
+
+static inline void debug_init(void)
+{
+	if (config.is_debug_inited)
+		return;
+
+	config.is_debug_inited = true;
+
+	if (!config.file)
+		debug_file_close();
+	else if (!debug_file_open(DEBUG_FILE_PATH))
+		config.file = false;
+
+	if (!config.syslog) {
+		if (gSyslog_open)
+			closelog();
+	} else if (!gSyslog_open) {
+		openlog("usteer", 0, LOG_USER);
+		gSyslog_open = true;
+	}
+}
+
 void debug_msg(int level, const char *func, int line, const char *format, ...)
 {
 	va_list ap;
@@ -59,11 +117,23 @@ void debug_msg(int level, const char *func, int line, const char *format, ...)
 	if (!config.syslog)
 		fprintf(stderr, "[%s:%d] ", func, line);
 
+	debug_init();
+
 	va_start(ap, format);
-	if (config.syslog)
-		vsyslog(level >= MSG_DEBUG ? LOG_DEBUG : LOG_INFO, format, ap);
-	else
+
+	if (!config.file && !config.syslog) {
+		fprintf(stderr, "[%s:%d] ", func, line);
 		vfprintf(stderr, format, ap);
+	} else {
+		if (config.file) {
+			vfprintf(gDebug_file, format, ap);
+			fflush(gDebug_file);
+		}
+
+		if (config.syslog)
+			vsyslog(level >= MSG_DEBUG ? LOG_DEBUG : LOG_INFO, format, ap);
+	}
+
 	va_end(ap);
 
 }
@@ -121,7 +191,7 @@ void usteer_init_defaults(void)
 	config.load_kick_min_clients = 10;
 	config.load_kick_reason_code = 5; /* WLAN_REASON_DISASSOC_AP_BUSY */
 
-	config.debug_level = MSG_FATAL;
+	config.debug_level = MSG_INFO;
 }
 
 void usteer_update_time(void)
@@ -206,8 +276,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	openlog("usteer", 0, LOG_USER);
-
 	config_set_event_log_types(NULL);
 	usteer_update_time();
 	uloop_init();
@@ -229,5 +297,6 @@ int main(int argc, char **argv)
 	uloop_run();
 
 	uloop_done();
+	debug_file_close();
 	return 0;
 }
